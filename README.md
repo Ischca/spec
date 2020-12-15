@@ -4,14 +4,14 @@
 ### スコープベース
 関数型言語のように、この言語は全ての式が関数であり、全ての関数がスコープである。
 #### 単純な例
-```
-let text = { "Hello" }
+```ocaml
+let text = "Hello"
 let greet = print text
 
 greet      // Hello
 ```
 #### FizzBuzz
-```
+```ocaml
 let fizzBuzz = n:Int {
     if n > 1 then fizzBuzz n-1
 
@@ -24,11 +24,16 @@ let fizzBuzz = n:Int {
 fizzBuzz 20
 ```
 #### スコープ
-```
-// 空のスコープ、何もしない
+```ocaml
+// 代入していない場合は即時関数
 {}
 
-// これは関数でありスコープである
+// 変数
+let foo = "Foo"
+// 上記はこのようにも書ける
+let bar = { "Bar" }
+
+// 関数でありスコープである
 let f = {}
 // 呼び出し
 f(){}
@@ -38,25 +43,49 @@ f
 // 引数があるスコープ
 // 引数の型は省略できない
 // 引数が1つの場合は()を省略できる
-let f2 = arg1:String {
-    print
+let one = arg1:String {
+    print arg1
 }
 // 引数が2つ以上の場合は()で囲む
-let f3 = (arg1:String, arg2:String) {
+let two = (arg1:String, arg2:String) {
     print arg1
     print arg2
 }
 // 引数がある関数の呼び出し
-f3 "Hello, " "World!"    // Hello, World!
+two "Hello, " "World!"    // Hello, World!
 
 // 呼び出し後のスコープ内の記述は続けざまに呼び出される
-f3 "Hello " "I'm " {
-    print "Ischca"
+two "Hello " "I'm " {
+    one "Ischca"
 } // Hello I'm Ischca
+```
+スコープはScope<T>型で表現される  
+よって、
+```ocaml
+let scope: Scope<void> = {}
+```
+のように書くことができる。  
+また、引数にスコープを受け取ることで、中間に処理を挟むことができる
+```ocaml
+let scope function:Scope<void> = {
+    println "start"
+    function
+    println "end"
+}
+
+scope {
+    println "Hello"
+}
+
+---
+
+start
+Hello
+end
 
 ```
 #### ネスト
-```
+```ocaml
 let scopeA = {
     let numA = 3
 }
@@ -74,8 +103,8 @@ scopeA {
     }
 }
 ```
-#### スコープの合成
-```
+#### 合成
+```ocaml
 let scopeA = {
     let numA = 3
 }
@@ -85,14 +114,30 @@ let scopeB = {
 }
 
 scopeA + scopeB {
-    print(numA) // 3
-    print(numB) // 4
+    print numA // 3
+    print numB // 4
+}
+```
+#### 連結
+```ocaml
+let scopeA = {
+    let numA = 3
+}
+
+let scopeB = {
+    let numB = 4
+}
+
+scopeA {
+    numA + 10
+}
+| scopeB {
+    print that // 13
 }
 ```
 #### 制御構文
-```
+```ocaml
 // ifスコープ
-// ifはthenスコープとelseスコープを持っている
 let n = 1
 if n == 0 {
     then {
@@ -103,8 +148,18 @@ if n == 0 {
     }
 }   // n is not 0
 
-// forスコープ
-
+// matchスコープ
+match {
+    case n == 0 {
+        "n is 0"
+    }
+    case n == 1 {
+        "n is 1"
+    }
+    else {
+        "n is not 0 and not 1"
+    }
+}   // "n is 1"
 
 ```
 ## マイルストーン
