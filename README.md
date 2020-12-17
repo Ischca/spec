@@ -67,7 +67,7 @@ let scope: Scope<void> = {}
 のように書くことができる。  
 また、引数にスコープを受け取ることで、中間に処理を挟むことができる
 ```ocaml
-let scope function:Scope<void> = {
+let scope = function:Scope<void> {
     println "start"
     function
     println "end"
@@ -98,7 +98,7 @@ scopeA {
     print numA // 3
 
     scopeB {
-        print numA // Error
+        print numA // 3
         print numB // 4
     }
 }
