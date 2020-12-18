@@ -23,9 +23,26 @@ let fizzBuzz = n:Int {
 
 fizzBuzz 20
 ```
+#### 組み込み型
+型             | Types          | Example
+---------------|----------------|----------
+整数型         | Int            | `let x: Int = 10`
+浮動小数点数型 | Float          | `let x: Float = 10.0`
+真偽値型       | Boolean        | `let x: Bool = false`
+文字列型       | String         | `let x: String = "ten"`
+文字型         | Char           | `let x: Char = 'c'`
+Unit           | Unit           | `let x: Unit = ()`
+Option         | Option         | `let x: Option(int) = Some(10)`
+タプル型       | Tuple          | `let x: (int, string) = (10, "ten")`
+リスト型       | List           | `let x: List<Int> = [1, 2, 3]`
+配列型         | Array          | `let x: Array<Int> = [1, 2, 3]`
+関数型         | Functions      | `let x: (int, int) => int = (a, b) => a + b`
+
 #### スコープ
 ```ocaml
-// 代入していない場合は即時関数
+// 無名スコープ
+// 代入していない場合は即時実行される
+// トップレベルの記述とほぼ同じだが、外側の変数を変更できないなどスコープのルールが適用される
 {}
 
 // 変数
@@ -54,20 +71,22 @@ let two = (arg1:String, arg2:String) {
 // 引数がある関数の呼び出し
 two "Hello, " "World!"    // Hello, World!
 
-// 呼び出し後のスコープ内の記述は続けざまに呼び出される
+// 全てのスコープは戻り値を内包したスコープを返す
+// 戻り値は`this`キーワードに含まれる
+// 呼び出し後にスコープを定義した場合、続けざまに実行される
 two "Hello " "I'm " {
+    // ここでの`this` の中身はtwoの戻り値なので`unit`
     one "Ischca"
 } // Hello I'm Ischca
 ```
 スコープはScope<T>型で表現される  
-よって、
+よって最も冗長な記述は以下となる
 ```ocaml
-let scope: Scope<void> = {}
-```
-のように書くことができる。  
+let scope: Scope<Unit> = () {}
+```  
 また、引数にスコープを受け取ることで、中間に処理を挟むことができる
 ```ocaml
-let scope = function:Scope<void> {
+let scope = function:Scope<Unit> {
     println "start"
     function
     println "end"
@@ -84,6 +103,22 @@ Hello
 end
 
 ```
+#### クロージャ
+全てのスコープはクロージャでもある
+```ocaml
+let createCounter = {
+  let function = n:Int {
+    function n + 1;
+  }
+  function 0
+}
+
+var count = createCounter;
+print(count); // 0
+print(count); // 1
+print(count()); // 2
+```
+
 #### ネスト
 ```ocaml
 let scopeA = {
@@ -124,16 +159,18 @@ let scopeA = {
     let numA = 3
 }
 
-let scopeB = {
-    let numB = 4
+let scopeB = num:Int {
+    print num
 }
 
+scopeA
+| scopeB 15    // 15
+
+// 引数を省略した場合、`this`が渡される
 scopeA {
     numA + 10
 }
-| scopeB {
-    print that // 13
-}
+| scopeB    // 13
 ```
 #### 制御構文
 ```ocaml
