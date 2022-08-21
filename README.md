@@ -1,18 +1,52 @@
 # 言語
 スコープベースの静的型付け言語
 ## 特徴
-### スコープベース
+#### スコープベース
 関数型言語のように、この言語は全ての式が関数であり、全ての関数がスコープである。
+全てのスコープは
+#### コンテキストバインド
+特定のコンテキストを持つスコープからしか呼び出すことが出来ないスコープを作成できる。
+```ocaml
+ctx Transactional = <ds: Datasource, conn: Connection>
+with_transactional = fn: Scope<Result<Int, String>>@Transactional {
+    conn.begin
+    val result = with Transactional fn
+    match result {
+        case Ok conn.commit
+        case Err conn.rollback
+    }
+    conn.close
+}
+
+val save = @transactional student: Student {
+    StudentDao conn { dao ->
+        if student.id == null {
+            then dao.insert student
+            else dao.update student
+        }
+    }
+}
+
+with_transactional {
+    Student "Takeshi" "221569" { student ->
+        save student { result ->
+            print result
+        }
+    }
+}
+
+```
+
 #### 単純な例
 ```ocaml
-let text = "Hello"
-let greet = print text
+val text = "Hello"
+val greet = print text
 
 greet      // Hello
 ```
 #### FizzBuzz
 ```ocaml
-let fizzBuzz = n:Int {
+val fizzBuzz = n:Int {
     if n > 1 then fizzBuzz n-1
 
     if n%15 == 0 then println "FizzBuzz"
@@ -26,17 +60,17 @@ fizzBuzz 20
 #### 組み込み型
 型             | Types          | Example
 ---------------|----------------|----------
-整数型         | Int            | `let x: Int = 10`
-浮動小数点数型 | Float          | `let x: Float = 10.0`
-真偽値型       | Boolean        | `let x: Bool = false`
-文字列型       | String         | `let x: String = "ten"`
-文字型         | Char           | `let x: Char = 'c'`
-Unit           | Unit           | `let x: Unit = ()`
-Option         | Option         | `let x: Option(int) = Some(10)`
-タプル型       | Tuple          | `let x: (int, string) = (10, "ten")`
-リスト型       | List           | `let x: List<Int> = [1, 2, 3]`
-配列型         | Array          | `let x: Array<Int> = [1, 2, 3]`
-関数型         | Functions      | `let x: (int, int) => int = (a, b) => a + b`
+整数型         | Int            | `val x: Int = 10`
+浮動小数点数型 | Float          | `val x: Float = 10.0`
+真偽値型       | Boolean        | `val x: Bool = false`
+文字列型       | String         | `val x: String = "ten"`
+文字型         | Char           | `val x: Char = 'c'`
+Unit           | Unit           | `val x: Unit = ()`
+Option         | Option         | `val x: Option(int) = Some(10)`
+タプル型       | Tuple          | `val x: (int, string) = (10, "ten")`
+リスト型       | List           | `val x: List<Int> = [1, 2, 3]`
+配列型         | Array          | `val x: Array<Int> = [1, 2, 3]`
+関数型         | Functions      | `val x: (int, int) => int = (a, b) => a + b`
 
 #### スコープ
 ```ocaml
@@ -46,25 +80,24 @@ Option         | Option         | `let x: Option(int) = Some(10)`
 {}
 
 // 変数
-let foo = "Foo"
+val foo = "Foo"
 // 上記はこのようにも書ける
-let bar = { "Bar" }
+val bar = { "Bar" }
 
 // 関数でありスコープである
-let f = {}
+val f = {}
 // 呼び出し
-f(){}
-// ()および{}は省略可能
+f{}
+// {}は省略可能
 f
 
 // 引数があるスコープ
 // 引数の型は省略できない
-// 引数が1つの場合は()を省略できる
-let one = arg1:String {
+val one = arg1:String {
     print arg1
 }
-// 引数が2つ以上の場合は()で囲む
-let two = (arg1:String, arg2:String) {
+// 引数が2つ以上の場合はスペースで区切る
+val two = arg1:String arg2:String {
     print arg1
     print arg2
 }
@@ -82,11 +115,11 @@ two "Hello " "I'm " {
 スコープはScope<T>型で表現される  
 よって最も冗長な記述は以下となる
 ```ocaml
-let scope: Scope<Unit> = () {}
-```  
+val scope: Scope<Unit> = {}
+```
 また、引数にスコープを受け取ることで、中間に処理を挟むことができる
 ```ocaml
-let scope = function:Scope<Unit> {
+val scope = function:Scope<Unit> {
     println "start"
     function
     println "end"
@@ -106,27 +139,27 @@ end
 #### クロージャ
 全てのスコープはクロージャでもある
 ```ocaml
-let createCounter = {
-  let function = n:Int {
+val createCounter = {
+  val function = n:Int {
     function n + 1;
   }
   function 0
 }
 
 var count = createCounter;
-print(count); // 0
-print(count); // 1
-print(count()); // 2
+print count; // 0
+print count; // 1
+print count; // 2
 ```
 
 #### ネスト
 ```ocaml
-let scopeA = {
-    let numA = 3
+val scopeA = {
+    val numA = 3
 }
 
-let scopeB = {
-    let numB = 4
+val scopeB = {
+    val numB = 4
 }
 
 scopeA {
@@ -140,12 +173,12 @@ scopeA {
 ```
 #### 合成
 ```ocaml
-let scopeA = {
-    let numA = 3
+val scopeA = {
+    val numA = 3
 }
 
-let scopeB = {
-    let numB = 4
+val scopeB = {
+    val numB = 4
 }
 
 scopeA + scopeB {
@@ -155,11 +188,11 @@ scopeA + scopeB {
 ```
 #### 連結
 ```ocaml
-let scopeA = {
-    let numA = 3
+val scopeA = {
+    val numA = 3
 }
 
-let scopeB = num:Int {
+val scopeB = num:Int {
     print num
 }
 
@@ -175,7 +208,7 @@ scopeA {
 #### 制御構文
 ```ocaml
 // ifスコープ
-let n = 1
+val n = 1
 if n == 0 {
     then {
         "n is 0"
