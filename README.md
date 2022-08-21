@@ -8,7 +8,7 @@
 特定のコンテキストを持つスコープからしか呼び出すことが出来ないスコープを作成できる。
 ```ocaml
 ctx Transactional = <ds: Datasource, conn: Connection>
-with_transactional = fn: Scope<Result<Int, String>>@Transactional {
+val with_transactional = fn: Scope<Result<Int, String>>@Transactional {
     conn.begin
     val result = with Transactional fn
     match result {
