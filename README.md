@@ -17,44 +17,66 @@ Option         | Option         | `val x: Option(int) = Some(10)`
 関数型         | Function      | `val x: (int, int) => int = (a, b) => a + b`
 
 ## 特徴
+### 語順
+OSV型（Object - Subject - Verb）の語順を採用している。  
+```Orange Sam eat.```のように、目的語で始まり、主語が続き、動詞で終わる。  
+また、日本語のように主語が抜けてもよい。
+```ocaml
+val sam = "Sam" human
+val orange = "Orange"
+
+orange sam.eat  // Sam eat Orange
+
+
+fun human = name: String {
+    val ate: String[] = []
+    fun eat = food: String {
+        food
+        |> ate.push  // パイプによりfoodの結果をpush関数に渡す
+        |> s -> `$name eat $s` print  // ラムダ式も可能
+    }
+}
+```
+
 ### スコープベース
 関数型言語のように、この言語は全ての式が関数であり、全ての関数がスコープである。
 全てのスコープは第一級オブジェクトである。
 
 ### 制限を与える
+#### アフィン変数
+全ての変数はアフィン変数であり、最大1回使用されることが保証される。
 
 #### コンテキストバインド
 特定のコンテキストを持つスコープからしか呼び出すことが出来ないスコープを作成できる。
 ```ocaml
 ctx Transactional = <ds: Datasource, conn: Connection>
-val with_transactional = fn: () => (Int, String) {
+fun with_transactional = fn: () => (Int, String) {
     conn.begin
     with Transactional fn
-    | match {
+    |> match {
         case Ok conn.commit
         case Err conn.rollback
     }
     conn.close
 }
 
-val studentDaoScope = @transactional {
+fun studentDaoScope = @Transactional {
     StudentDao conn
 }
 
-val save = @transactional student: Student {
+fun save = @Transactional student: Student {
     studentDaoScope { dao ->
         if student.id == null {
-            then dao.insert student
-            else dao.update student
+            then student dao.insert
+            else student dao.update
         }
     }
 }
 
 with_transactional {
-    Student "Takeshi" "221569" { student ->
-        save student
-        | print
-    }
+    val student = "Takeshi" "221569" Student
+    student save
+    |> print  // true
 }
 
 ```
@@ -62,27 +84,50 @@ with_transactional {
 #### 提供の制限
 特定の型に定義された関数以外の呼び出しを制限するスコープを作成できる。
 ```ocaml
+@AllowedInRestrictedScope
+fun function1 = {
+    // 処理
+}
 
+@AllowedInRestrictedScope
+fun function2 = {
+    // 処理
+}
 
+@AllowedInRestrictedScope
+fun function3 = {
+    // 処理
+}
+
+fun restrictedFun using @AllowedInRestrictedScope, function3 = {
+    // function1, function2, function3 が使用可能な制限付きスコープ
+    ...
+}
 ```
 
 
 #### 単純な例
 ```ocaml
-print "Hello, World!"
+"Hello, World!" print
+```
+
+```ocaml
+1 + 2 print                 // 3
+"Hello" uppercase print     // HELLO
 ```
 #### FizzBuzz
 ```ocaml
-val fizzBuzz = n:Int {
-    if n > 1 then fizzBuzz n-1
+fun fizzBuzz = n: Int {
+    if n > 1 then n-1 fizzBuzz
 
-    if n%15 == 0 then println "FizzBuzz"
-    else if n%5 == 0 then println "Buzz"
-    else if n%3 == 0 then println "Fizz"
-    else println n
+    if n%15 == 0 then "FizzBuzz"
+    else if n%5 == 0 then "Buzz"
+    else if n%3 == 0 then "Fizz"
+    else n
+    |> println
 }
 
-fizzBuzz 20
+20 fizzBuzz
 ```
 #### スコープ
 ```ocaml
@@ -93,53 +138,40 @@ fizzBuzz 20
 
 // 変数
 val foo = "Foo"
-// 上記はこのようにも書ける
-val bar = { "Bar" }
 
-// 関数でありスコープである
-val f = {}
-// 呼び出し
-f{}
-// {}は省略可能
-f
+// 空の関数
+fun f = {}
 
 // 引数があるスコープ
-// 引数の型は省略できない
-val one = arg1:String {
-    print arg1
+fun one = arg1 {
+    arg1 print
 }
-// 引数が2つ以上の場合はスペースで区切る
-val two = arg1:String arg2:String {
-    print arg1
-    print arg2
+// 引数が2つ以上の場合
+fun two = arg1, arg2 {
+    arg1 print
+    arg2 print
 }
 // 引数がある関数の呼び出し
-two "Hello, " "World!"    // Hello, World!
+"Hello, ", "World!" two    // Hello, World!
 
 // 全てのスコープは戻り値を内包したスコープを返す
 // 戻り値は`context`キーワードに含まれる
 // 呼び出し後にスコープを定義した場合、続けざまに実行される
-two "Hello " "I'm " {
-    // ここでの`this` の中身はtwoの戻り値なので`unit`
-    one "Ischca"
+"Hello ", "I'm " two { c ->
+    // ここでの`c` の中身はtwoの戻り値なので`unit`
+    "Ischca" one
 } // Hello I'm Ischca
 ```
-スコープはScope<T>型で表現される  
-よって最も冗長な記述は以下となる
+#### 高階関数
+引数にスコープを受け取ることで、中間に処理を挟むことができる
 ```ocaml
-val scope: Scope<Unit> = {}
-```
-また、引数にスコープを受け取ることで、中間に処理を挟むことができる
-```ocaml
-val scope = function:Scope<Unit> {
-    println "start"
-    function
-    println "end"
+fun sandwich = fn: () => Unit {
+    "start" println
+    fn
+    "end" println
 }
 
-scope {
-    println "Hello"
-}
+"Hello" println sandwich
 
 ---
 
@@ -149,77 +181,76 @@ end
 
 ```
 #### クロージャ
-全てのスコープはクロージャでもある
 ```ocaml
-val createCounter = {
-  val function = n:Int {
-    function n + 1;
+fun createCounter = {
+  fun count = n:Int {
+    n + 1 count
   }
-  function 0
+  0 count
 }
 
-var count = createCounter;
-print count; // 0
-print count; // 1
-print count; // 2
+var counter = createCounter
+counter print // 0
+counter print // 1
+counter print // 2
 ```
 
 #### ネスト
 ```ocaml
-val scopeA = {
+fun scopeA = {
     val numA = 3
 }
 
-val scopeB = {
+fun scopeB = {
     val numB = 4
 }
 
 scopeA {
-    print numA // 3
+    numA print // 3
 
     scopeB {
-        print numA // 3
-        print numB // 4
+        numA print // 3
+        numB print // 4
     }
 }
 ```
 #### 合成
 ```ocaml
-val scopeA = {
+fun scopeA = {
     val numA = 3
 }
 
-val scopeB = {
+fun scopeB = {
     val numB = 4
 }
 
 scopeA + scopeB {
-    print numA // 3
-    print numB // 4
+    numA print // 3
+    numB print // 4
 }
 ```
 #### 連結
 ```ocaml
-val scopeA = {
+fun scopeA = {
     val numA = 3
 }
 
-val scopeB = num:Int {
-    print num
+fun scopeB = num:Int {
+    num print
 }
 
 scopeA
-| scopeB 15    // 15
+|> 15 scopeB    // 15
 
 // 引数を省略した場合、`context`が渡される
 scopeA {
     numA + 10
 }
-| scopeB    // 13
+|> scopeB    // 13
 ```
 #### 制御構文
 ```ocaml
-// ifスコープ
+// if式
 val n = 1
 if n == 0 {
     then {
@@ -230,7 +261,7 @@ if n == 0 {
     }
 }   // n is not 0
 
-// matchスコープ
+// match式
 match {
     case n == 0 {
         "n is 0"
@@ -243,7 +274,19 @@ match {
     }
 }   // "n is 1"
 
+// for文
+for (i in 0..9 step 2) {
+  print(i)
+} // 0123456789
+
+// while文
+while (i < 10) {
+    i print
+    i = i + 1
+} // 0123456789
+
 ```
+
 #### 内包表記
 ```ocaml
 for (x <- (1 to 10) if x %2 ==0) yield x    // Scala
@@ -264,7 +307,7 @@ for (x <- (1 to 10) if x %2 ==0) yield x    // Scala
 ```
 以下の場合、各数値が2乗されたリストが返る
 ```ocaml
-{{it * it} [1..10]}
+{{it * it} [1..10]} 
 // [1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
 ```
 
@@ -281,7 +324,7 @@ for (x <- (1 to 10) if x %2 ==0) yield x    // Scala
 ```
 ここで、fix関数は以下の定義とする
 ```ocaml
-val fix = <T> f: () -> T { f fix g }
+fun fix = <T> f: () -> T { f fix g }
 ```
 
 ```ocaml
